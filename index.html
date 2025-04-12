@@ -293,8 +293,8 @@
             let results = [];
             if (inputs.shorterSpan >= 2.2 && inputs.shorterSpan <= 4.8) {
                 for (let span = 2.2; span <= 4.8; span += 0.2) {
-                    let maxLiveLoad = Math.min(30, Math.floor(28 + (span - 2.2) * 0.5)); // Adjust max live load based on span
-                    for (let liveLoad = 1; liveLoad <= maxLiveLoad; liveLoad++) {
+                    let liveLoad = 1;
+                    while (true) {
                         let designResults = [];
                         for (let fck of fckValues) {
                             for (let fy of fyValues) {
@@ -378,7 +378,11 @@
                             let minPriceIdx = designResults.reduce((minIdx, curr, idx, arr) => curr[2] < arr[minIdx][2] ? idx : minIdx, 0);
                             let minCombo = `${designResults[minPriceIdx][0]}-${designResults[minPriceIdx][1]}`;
                             results.push([inputs.longerSpan, span, liveLoad, minCombo, designResults[minPriceIdx][3], designResults[minPriceIdx][2]]);
+                        } else {
+                            break; // Stop if no valid design (shear check unsafe for all combinations)
                         }
+                        liveLoad++;
+                        if (liveLoad > 30) break; // Safety cap at 30
                     }
                 }
             } else {
