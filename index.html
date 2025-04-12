@@ -123,6 +123,8 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+        .safe { color: #27ae60; font-weight: bold; }
+        .unsafe { color: #e74c3c; font-weight: bold; }
         .chart-container {
             margin-top: 40px;
             max-width: 800px;
@@ -289,91 +291,94 @@
             }
 
             let results = [];
-            if (inputs.shorterSpan === 2.2) {
-                for (let liveLoad = 1; liveLoad <= 28; liveLoad++) {
-                    let designResults = [];
-                    for (let fck of fckValues) {
-                        for (let fy of fyValues) {
-                            let aspectRatio = inputs.longerSpan / inputs.shorterSpan;
-                            let slabType = aspectRatio > 2 ? "One Way" : "Two Way";
-                            let effectiveDepthD = 125;
-                            let effectiveCover = 25;
-                            let totalDepth = Math.round((effectiveDepthD + effectiveCover) * 100) / 100;
+            if (inputs.shorterSpan >= 2.2 && inputs.shorterSpan <= 4.8) {
+                for (let span = 2.2; span <= 4.8; span += 0.2) {
+                    let maxLiveLoad = Math.min(30, Math.floor(28 + (span - 2.2) * 0.5)); // Adjust max live load based on span
+                    for (let liveLoad = 1; liveLoad <= maxLiveLoad; liveLoad++) {
+                        let designResults = [];
+                        for (let fck of fckValues) {
+                            for (let fy of fyValues) {
+                                let aspectRatio = inputs.longerSpan / span;
+                                let slabType = aspectRatio > 2 ? "One Way" : "Two Way";
+                                let effectiveDepthD = 125;
+                                let effectiveCover = 25;
+                                let totalDepth = Math.round((effectiveDepthD + effectiveCover) * 100) / 100;
 
-                            let effectiveSpan = Math.round(Math.min(inputs.shorterSpan + effectiveDepthD / 1000, inputs.shorterSpan + widthSupports) * 100) / 100;
-                            let deadLoadSlab = Math.round((totalDepth / 1000 * 25) * 100) / 100;
-                            let deadLoadFloorFinish = Math.round(inputs.floorFinish * 100) / 100;
-                            let totalDeadLoadSlab = Math.round((deadLoadSlab + deadLoadFloorFinish) * 100) / 100;
-                            let wu = Math.round((1.5 * (totalDeadLoadSlab + liveLoad)) * 100) / 100;
+                                let effectiveSpan = Math.round(Math.min(span + effectiveDepthD / 1000, span + widthSupports) * 100) / 100;
+                                let deadLoadSlab = Math.round((totalDepth / 1000 * 25) * 100) / 100;
+                                let deadLoadFloorFinish = Math.round(inputs.floorFinish * 100) / 100;
+                                let totalDeadLoadSlab = Math.round((deadLoadSlab + deadLoadFloorFinish) * 100) / 100;
+                                let wu = Math.round((1.5 * (totalDeadLoadSlab + liveLoad)) * 100) / 100;
 
-                            let mu = Math.round((wu * effectiveSpan * effectiveSpan / 8) * 100) / 100;
-                            let vu = Math.round((wu * effectiveSpan / 2) * 100) / 100;
-                            let mulim = fy === 415 ? 0.138 : (fy === 500 ? 0.133 : 0.130);
-                            mulim = Math.round((mulim * fck * 1000 * (effectiveDepthD * effectiveDepthD) / 1e6) * 100) / 100;
+                                let mu = Math.round((wu * effectiveSpan * effectiveSpan / 8) * 100) / 100;
+                                let vu = Math.round((wu * effectiveSpan / 2) * 100) / 100;
+                                let mulim = fy === 415 ? 0.138 : (fy === 500 ? 0.133 : 0.130);
+                                mulim = Math.round((mulim * fck * 1000 * (effectiveDepthD * effectiveDepthD) / 1e6) * 100) / 100;
 
-                            if (mulim <= mu) continue;
+                                if (mulim <= mu) continue;
 
-                            let astMain = Math.round((0.5 * fck / fy * (1 - Math.sqrt(1 - (4.6 * mu * 1e6) / (fck * 1000 * effectiveDepthD * effectiveDepthD))) * 1000 * effectiveDepthD) * 100) / 100;
-                            let astMin = Math.round((0.0012 * 1000 * totalDepth) * 100) / 100;
+                                let astMain = Math.round((0.5 * fck / fy * (1 - Math.sqrt(1 - (4.6 * mu * 1e6) / (fck * 1000 * effectiveDepthD * effectiveDepthD))) * 1000 * effectiveDepthD) * 100) / 100;
+                                let astMin = Math.round((0.0012 * 1000 * totalDepth) * 100) / 100;
 
-                            let areaOneMainBar = Math.round((Math.PI / 4 * inputs.mainBarDia * inputs.mainBarDia) * 100) / 100;
-                            let spacingMainBar = Math.round((1000 * areaOneMainBar / astMain / 10)) * 10;
-                            let adoptSpacingMain = Math.floor(Math.min(3 * effectiveDepthD, 300, spacingMainBar) / 10) * 10;
-                            let astMainProvided = Math.round((1000 * areaOneMainBar / adoptSpacingMain) * 100) / 100;
+                                let areaOneMainBar = Math.round((Math.PI / 4 * inputs.mainBarDia * inputs.mainBarDia) * 100) / 100;
+                                let spacingMainBar = Math.round((1000 * areaOneMainBar / astMain / 10)) * 10;
+                                let adoptSpacingMain = Math.floor(Math.min(3 * effectiveDepthD, 300, spacingMainBar) / 10) * 10;
+                                let astMainProvided = Math.round((1000 * areaOneMainBar / adoptSpacingMain) * 100) / 100;
 
-                            let areaOneDistBar = Math.round((Math.PI / 4 * inputs.distBarDia * inputs.distBarDia) * 100) / 100;
-                            let spacingDistBar = Math.ceil((1000 * areaOneDistBar / astMin / 10)) * 10;
-                            let adoptSpacingDist = Math.floor(Math.min(5 * effectiveDepthD, 450, spacingDistBar) / 10) * 10;
-                            let astDistProvided = Math.round((1000 * areaOneDistBar / adoptSpacingDist) * 100) / 100;
+                                let areaOneDistBar = Math.round((Math.PI / 4 * inputs.distBarDia * inputs.distBarDia) * 100) / 100;
+                                let spacingDistBar = Math.ceil((1000 * areaOneDistBar / astMin / 10)) * 10;
+                                let adoptSpacingDist = Math.floor(Math.min(5 * effectiveDepthD, 450, spacingDistBar) / 10) * 10;
+                                let astDistProvided = Math.round((1000 * areaOneDistBar / adoptSpacingDist) * 100) / 100;
 
-                            let tv = Math.round((vu * 1000 / (1000 * effectiveDepthD)) * 100) / 100;
-                            let pt = Math.round((100 * astMainProvided / (1000 * effectiveDepthD)) * 100) / 100;
-                            let tauC = calculateShearStrength(pt, fck);
-                            let designShearStrength = Number((tauC * 1.30).toFixed(3));
-                            let shearCheck = tv > designShearStrength ? "Unsafe" : "Safe";
-                            if (shearCheck === "Unsafe") continue;
+                                let tv = Math.round((vu * 1000 / (1000 * effectiveDepthD)) * 100) / 100;
+                                let pt = Math.round((100 * astMainProvided / (1000 * effectiveDepthD)) * 100) / 100;
+                                let tauC = calculateShearStrength(pt, fck);
+                                let designShearStrength = Number((tauC * 1.30).toFixed(3));
+                                let shearCheck = tv > designShearStrength ? "Unsafe" : "Safe";
+                                if (shearCheck === "Unsafe") continue;
 
-                            let numMainBars = Math.ceil((inputs.longerSpan * 1000) / adoptSpacingMain) + 1;
-                            let mainSteelMeters = numMainBars * inputs.shorterSpan;
-                            let mainBarWeight = barWeights[inputs.mainBarDia] || 0.395;
-                            let mainBarKgs = mainSteelMeters * mainBarWeight;
+                                let numMainBars = Math.ceil((inputs.longerSpan * 1000) / adoptSpacingMain) + 1;
+                                let mainSteelMeters = numMainBars * span;
+                                let mainBarWeight = barWeights[inputs.mainBarDia] || 0.395;
+                                let mainBarKgs = mainSteelMeters * mainBarWeight;
 
-                            let numDistBars = Math.ceil((inputs.shorterSpan * 1000) / adoptSpacingDist) + 1;
-                            let distSteelMeters = numDistBars * inputs.longerSpan;
-                            let distBarWeight = barWeights[inputs.distBarDia] || 0.395;
-                            let distBarKgs = distSteelMeters * distBarWeight;
+                                let numDistBars = Math.ceil((span * 1000) / adoptSpacingDist) + 1;
+                                let distSteelMeters = numDistBars * inputs.longerSpan;
+                                let distBarWeight = barWeights[inputs.distBarDia] || 0.395;
+                                let distBarKgs = distSteelMeters * distBarWeight;
 
-                            let totalSteelWeight = Math.round((mainBarKgs + distBarKgs) * 100) / 100;
+                                let totalSteelWeight = Math.round((mainBarKgs + distBarKgs) * 100) / 100;
 
-                            let totalDepthM = Math.round((totalDepth / 1000) * 100) / 100;
-                            let volumeWetConcrete = Math.round((inputs.longerSpan * inputs.shorterSpan * totalDepthM) * 100) / 100;
-                            let volumeDryConcrete = Math.round((volumeWetConcrete * 1.54) * 100) / 100;
+                                let totalDepthM = Math.round((totalDepth / 1000) * 100) / 100;
+                                let volumeWetConcrete = Math.round((inputs.longerSpan * span * totalDepthM) * 100) / 100;
+                                let volumeDryConcrete = Math.round((volumeWetConcrete * 1.54) * 100) / 100;
 
-                            let ratios = fck === 20 ? [1, 1.5, 3] : (fck === 25 ? [1, 1, 2] : [1, 0.75, 1.5]);
-                            let totalRatio = ratios.reduce((a, b) => a + b, 0);
-                            let volumeCement = Math.round((ratios[0] * volumeDryConcrete / totalRatio) * 100) / 100;
-                            let volumeSand = Math.round((ratios[1] * volumeDryConcrete / totalRatio) * 100) / 100;
-                            let volumeAggregate = Math.round((ratios[2] * volumeDryConcrete / totalRatio) * 100) / 100;
+                                let ratios = fck === 20 ? [1, 1.5, 3] : (fck === 25 ? [1, 1, 2] : [1, 0.75, 1.5]);
+                                let totalRatio = ratios.reduce((a, b) => a + b, 0);
+                                let volumeCement = Math.round((ratios[0] * volumeDryConcrete / totalRatio) * 100) / 100;
+                                let volumeSand = Math.round((ratios[1] * volumeDryConcrete / totalRatio) * 100) / 100;
+                                let volumeAggregate = Math.round((ratios[2] * volumeDryConcrete / totalRatio) * 100) / 100;
 
-                            let cementInKg = Math.round((volumeCement * 1440) * 100) / 100;
-                            let numCementBags = Math.round((cementInKg / 50) * 100) / 100;
-                            let sandInTon = Math.round((volumeSand * 1600 / 1000) * 100) / 100;
-                            let aggregateInTon = Math.round((volumeAggregate * 1450 / 1000) * 100) / 100;
+                                let cementInKg = Math.round((volumeCement * 1440) * 100) / 100;
+                                let numCementBags = Math.round((cementInKg / 50) * 100) / 100;
+                                let sandInTon = Math.round((volumeSand * 1600 / 1000) * 100) / 100;
+                                let aggregateInTon = Math.round((volumeAggregate * 1450 / 1000) * 100) / 100;
 
-                            let priceCement = Math.round((numCementBags * inputs.rateCement) * 100) / 100;
-                            let steelRate = fy === 415 ? inputs.rateSteel415 : (fy === 500 ? inputs.rateSteel500 : inputs.rateSteel550);
-                            let priceSteel = Math.round((totalSteelWeight * steelRate) * 100) / 100;
-                            let priceSand = Math.round((sandInTon * inputs.rateSand) * 100) / 100;
-                            let priceAggregate = Math.round((aggregateInTon * inputs.rateAggregate) * 100) / 100;
-                            let totalPrice = Math.round((priceCement + priceSteel + priceSand + priceAggregate) * 100) / 100;
+                                let priceCement = Math.round((numCementBags * inputs.rateCement) * 100) / 100;
+                                let steelRate = fy === 415 ? inputs.rateSteel415 : (fy === 500 ? inputs.rateSteel500 : inputs.rateSteel550);
+                                let priceSteel = Math.round((totalSteelWeight * steelRate) * 100) / 100;
+                                let priceSand = Math.round((sandInTon * inputs.rateSand) * 100) / 100;
+                                let priceAggregate = Math.round((aggregateInTon * inputs.rateAggregate) * 100) / 100;
+                                let totalPrice = Math.round((priceCement + priceSteel + priceSand + priceAggregate) * 100) / 100;
 
-                            designResults.push([fck, fy, totalPrice]);
+                                designResults.push([fck, fy, totalPrice, shearCheck]);
+                            }
                         }
-                    }
-                    if (designResults.length > 0) {
-                        let minPriceIdx = designResults.reduce((minIdx, curr, idx, arr) => curr[2] < arr[minIdx][2] ? idx : minIdx, 0);
-                        let minCombo = `${designResults[minPriceIdx][0]}-${designResults[minPriceIdx][1]}`;
-                        results.push([inputs.longerSpan, inputs.shorterSpan, minCombo, designResults[minPriceIdx][2]]);
+                        if (designResults.length > 0) {
+                            let minPriceIdx = designResults.reduce((minIdx, curr, idx, arr) => curr[2] < arr[minIdx][2] ? idx : minIdx, 0);
+                            let minCombo = `${designResults[minPriceIdx][0]}-${designResults[minPriceIdx][1]}`;
+                            results.push([inputs.longerSpan, span, liveLoad, minCombo, designResults[minPriceIdx][3], designResults[minPriceIdx][2]]);
+                        }
                     }
                 }
             } else {
@@ -453,30 +458,30 @@
                         let priceAggregate = Math.round((aggregateInTon * inputs.rateAggregate) * 100) / 100;
                         let totalPrice = Math.round((priceCement + priceSteel + priceSand + priceAggregate) * 100) / 100;
 
-                        designResults.push([fck, fy, totalPrice]);
+                        designResults.push([fck, fy, totalPrice, shearCheck]);
                     }
                 }
                 if (designResults.length > 0) {
                     let minPriceIdx = designResults.reduce((minIdx, curr, idx, arr) => curr[2] < arr[minIdx][2] ? idx : minIdx, 0);
                     let minCombo = `${designResults[minPriceIdx][0]}-${designResults[minPriceIdx][1]}`;
-                    results.push([inputs.longerSpan, inputs.shorterSpan, minCombo, designResults[minPriceIdx][2]]);
+                    results.push([inputs.longerSpan, inputs.shorterSpan, inputs.liveLoad, minCombo, designResults[minPriceIdx][3], designResults[minPriceIdx][2]]);
                 }
             }
 
-            let html = '<table><thead><tr><th>Longer Span (m)</th><th>Shorter Span (m)</th><th>Minimum Combination (Fck-Fy)</th><th>Total Price (INR)</th></tr></tbody>';
+            let html = '<table><thead><tr><th>Longer Span (m)</th><th>Shorter Span (m)</th><th>Live Load (kN/m²)</th><th>Minimum Combination (Fck-Fy)</th><th>Shear Check</th><th>Total Price (INR)</th></tr></tbody>';
             if (results.length === 0) {
-                html += '<tr><td colspan="4">No valid designs found.</td></tr>';
+                html += '<tr><td colspan="6">No valid designs found.</td></tr>';
             } else {
                 results.forEach(row => {
-                    html += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td></tr>`;
+                    html += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td class="${row[4].toLowerCase()}">${row[4]}</td><td>${row[5]}</td></tr>`;
                 });
             }
             html += '</tbody></table>';
             document.getElementById('table-container').innerHTML = html;
 
             if (results.length > 0) {
-                const liveLoads = inputs.shorterSpan === 2.2 ? Array.from({length: 28}, (_, i) => i + 1) : [inputs.liveLoad];
-                const prices = results.map(r => r[3]);
+                const liveLoads = results.map(r => r[2]);
+                const prices = results.map(r => r[5]);
                 const priceChartCtx = document.getElementById('priceChart').getContext('2d');
                 destroyCharts();
                 priceChart = new Chart(priceChartCtx, {
@@ -513,8 +518,10 @@
             const ws = XLSX.utils.json_to_sheet(data.map(row => ({
                 "Longer Span (m)": row[0],
                 "Shorter Span (m)": row[1],
-                "Minimum Combination (Fck-Fy)": row[2],
-                "Total Price (INR)": row[3]
+                "Live Load (kN/m²)": row[2],
+                "Minimum Combination (Fck-Fy)": row[3],
+                "Shear Check": row[4],
+                "Total Price (INR)": row[5]
             })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "SlabDesign");
@@ -522,7 +529,7 @@
         }
 
         document.getElementById('shorterSpan').addEventListener('input', function() {
-            if (this.value === '2.2') {
+            if (this.value >= 2.2 && this.value <= 4.8) {
                 calculateSlabDesign();
             }
         });
