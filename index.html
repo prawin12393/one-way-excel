@@ -188,10 +188,6 @@
                     <input type="number" id="aggregateRate" step="0.01" min="0" required oninput="calculateSlabDesign()">
                 </div>
                 <div class="input-field">
-                    <label for="cementRate">Cement Rate (per 50kg bag):</label>
-                    <input type="number" id="cementRate" step="0.01" min="0" required oninput="calculateSlabDesign()">
-                </div>
-                <div class="input-field">
                     <label for="steelFe415Rate">Steel Fe415 Rate (per kg):</label>
                     <input type="number" id="steelFe415Rate" step="0.01" min="0" required oninput="calculateSlabDesign()">
                 </div>
@@ -228,7 +224,7 @@
             0.15: { 'M15': 0.28, 'M20': 0.28, 'M25': 0.29, 'M30': 0.29, 'M35': 0.29, 'M40+': 0.30 },
             0.25: { 'M15': 0.35, 'M20': 0.36, 'M25': 0.36, 'M30': 0.37, 'M35': 0.37, 'M40+': 0.38 },
             0.50: { 'M15': 0.46, 'M20': 0.48, 'M25': 0.49, 'M30': 0.50, 'M35': 0.50, 'M40+': 0.51 },
-            0.75: { 'M15': 0.54, 'M20': 0.56, 'M25': 0.57, 'M30': 0.59, 'M35': 0.59, 'M40+': 0.60 },
+            0.75: { 'M15': 0.54, 'M20': 0.56, 'M25': 0.57, 'M дают 0.59, 'M35': 0.59, 'M40+': 0.60 },
             1.00: { 'M15': 0.60, 'M20': 0.62, 'M25': 0.64, 'M30': 0.66, 'M35': 0.67, 'M40+': 0.68 },
             1.25: { 'M15': 0.64, 'M20': 0.67, 'M25': 0.70, 'M30': 0.71, 'M35': 0.73, 'M40+': 0.74 },
             1.50: { 'M15': 0.68, 'M20': 0.72, 'M25': 0.74, 'M30': 0.76, 'M35': 0.78, 'M40+': 0.79 },
@@ -277,7 +273,6 @@
                 distBarDia: Number(document.getElementById('distBarDia').value) || 0,
                 rateSand: Number(document.getElementById('sandRate').value) || 0,
                 rateAggregate: Number(document.getElementById('aggregateRate').value) || 0,
-                rateCement: Number(document.getElementById('cementRate').value) || 0,
                 rateSteel415: Number(document.getElementById('steelFe415Rate').value) || 0,
                 rateSteel500: Number(document.getElementById('steelFe500Rate').value) || 0,
                 rateSteel550: Number(document.getElementById('steelFe550Rate').value) || 0
@@ -291,101 +286,7 @@
             }
 
             let results = [];
-            if (inputs.shorterSpan >= 2.2 && inputs.shorterSpan <= 4.8) {
-                for (let span = 2.2; span <= 4.8; span += 0.2) {
-                    let liveLoad = 1;
-                    while (true) {
-                        let designResults = [];
-                        for (let fck of fckValues) {
-                            for (let fy of fyValues) {
-                                let aspectRatio = inputs.longerSpan / span;
-                                let slabType = aspectRatio > 2 ? "One Way" : "Two Way";
-                                let effectiveDepthD = 125;
-                                let effectiveCover = 25;
-                                let totalDepth = Math.round((effectiveDepthD + effectiveCover) * 100) / 100;
-
-                                let effectiveSpan = Math.round(Math.min(span + effectiveDepthD / 1000, span + widthSupports) * 100) / 100;
-                                let deadLoadSlab = Math.round((totalDepth / 1000 * 25) * 100) / 100;
-                                let deadLoadFloorFinish = Math.round(inputs.floorFinish * 100) / 100;
-                                let totalDeadLoadSlab = Math.round((deadLoadSlab + deadLoadFloorFinish) * 100) / 100;
-                                let wu = Math.round((1.5 * (totalDeadLoadSlab + liveLoad)) * 100) / 100;
-
-                                let mu = Math.round((wu * effectiveSpan * effectiveSpan / 8) * 100) / 100;
-                                let vu = Math.round((wu * effectiveSpan / 2) * 100) / 100;
-                                let mulim = fy === 415 ? 0.138 : (fy === 500 ? 0.133 : 0.130);
-                                mulim = Math.round((mulim * fck * 1000 * (effectiveDepthD * effectiveDepthD) / 1e6) * 100) / 100;
-
-                                if (mulim <= mu) continue;
-
-                                let astMain = Math.round((0.5 * fck / fy * (1 - Math.sqrt(1 - (4.6 * mu * 1e6) / (fck * 1000 * effectiveDepthD * effectiveDepthD))) * 1000 * effectiveDepthD) * 100) / 100;
-                                let astMin = Math.round((0.0012 * 1000 * totalDepth) * 100) / 100;
-
-                                let areaOneMainBar = Math.round((Math.PI / 4 * inputs.mainBarDia * inputs.mainBarDia) * 100) / 100;
-                                let spacingMainBar = Math.round((1000 * areaOneMainBar / astMain / 10)) * 10;
-                                let adoptSpacingMain = Math.floor(Math.min(3 * effectiveDepthD, 300, spacingMainBar) / 10) * 10;
-                                let astMainProvided = Math.round((1000 * areaOneMainBar / adoptSpacingMain) * 100) / 100;
-
-                                let areaOneDistBar = Math.round((Math.PI / 4 * inputs.distBarDia * inputs.distBarDia) * 100) / 100;
-                                let spacingDistBar = Math.ceil((1000 * areaOneDistBar / astMin / 10)) * 10;
-                                let adoptSpacingDist = Math.floor(Math.min(5 * effectiveDepthD, 450, spacingDistBar) / 10) * 10;
-                                let astDistProvided = Math.round((1000 * areaOneDistBar / adoptSpacingDist) * 100) / 100;
-
-                                let tv = Math.round((vu * 1000 / (1000 * effectiveDepthD)) * 100) / 100;
-                                let pt = Math.round((100 * astMainProvided / (1000 * effectiveDepthD)) * 100) / 100;
-                                let tauC = calculateShearStrength(pt, fck);
-                                let designShearStrength = Number((tauC * 1.30).toFixed(3));
-                                let shearCheck = tv > designShearStrength ? "Unsafe" : "Safe";
-                                if (shearCheck === "Unsafe") continue;
-
-                                let numMainBars = Math.ceil((inputs.longerSpan * 1000) / adoptSpacingMain) + 1;
-                                let mainSteelMeters = numMainBars * span;
-                                let mainBarWeight = barWeights[inputs.mainBarDia] || 0.395;
-                                let mainBarKgs = mainSteelMeters * mainBarWeight;
-
-                                let numDistBars = Math.ceil((span * 1000) / adoptSpacingDist) + 1;
-                                let distSteelMeters = numDistBars * inputs.longerSpan;
-                                let distBarWeight = barWeights[inputs.distBarDia] || 0.395;
-                                let distBarKgs = distSteelMeters * distBarWeight;
-
-                                let totalSteelWeight = Math.round((mainBarKgs + distBarKgs) * 100) / 100;
-
-                                let totalDepthM = Math.round((totalDepth / 1000) * 100) / 100;
-                                let volumeWetConcrete = Math.round((inputs.longerSpan * span * totalDepthM) * 100) / 100;
-                                let volumeDryConcrete = Math.round((volumeWetConcrete * 1.54) * 100) / 100;
-
-                                let ratios = fck === 20 ? [1, 1.5, 3] : (fck === 25 ? [1, 1, 2] : [1, 0.75, 1.5]);
-                                let totalRatio = ratios.reduce((a, b) => a + b, 0);
-                                let volumeCement = Math.round((ratios[0] * volumeDryConcrete / totalRatio) * 100) / 100;
-                                let volumeSand = Math.round((ratios[1] * volumeDryConcrete / totalRatio) * 100) / 100;
-                                let volumeAggregate = Math.round((ratios[2] * volumeDryConcrete / totalRatio) * 100) / 100;
-
-                                let cementInKg = Math.round((volumeCement * 1440) * 100) / 100;
-                                let numCementBags = Math.round((cementInKg / 50) * 100) / 100;
-                                let sandInTon = Math.round((volumeSand * 1600 / 1000) * 100) / 100;
-                                let aggregateInTon = Math.round((volumeAggregate * 1450 / 1000) * 100) / 100;
-
-                                let priceCement = Math.round((numCementBags * inputs.rateCement) * 100) / 100;
-                                let steelRate = fy === 415 ? inputs.rateSteel415 : (fy === 500 ? inputs.rateSteel500 : inputs.rateSteel550);
-                                let priceSteel = Math.round((totalSteelWeight * steelRate) * 100) / 100;
-                                let priceSand = Math.round((sandInTon * inputs.rateSand) * 100) / 100;
-                                let priceAggregate = Math.round((aggregateInTon * inputs.rateAggregate) * 100) / 100;
-                                let totalPrice = Math.round((priceCement + priceSteel + priceSand + priceAggregate) * 100) / 100;
-
-                                designResults.push([fck, fy, totalPrice, shearCheck]);
-                            }
-                        }
-                        if (designResults.length > 0) {
-                            let minPriceIdx = designResults.reduce((minIdx, curr, idx, arr) => curr[2] < arr[minIdx][2] ? idx : minIdx, 0);
-                            let minCombo = `${designResults[minPriceIdx][0]}-${designResults[minPriceIdx][1]}`;
-                            results.push([inputs.longerSpan, span, liveLoad, minCombo, designResults[minPriceIdx][3], designResults[minPriceIdx][2]]);
-                        } else {
-                            break; // Stop if no valid design (shear check unsafe for all combinations)
-                        }
-                        liveLoad++;
-                        if (liveLoad > 30) break; // Safety cap at 30
-                    }
-                }
-            } else {
+            for (let cementPrice = 200; cementPrice <= 400; cementPrice += 10) {
                 let designResults = [];
                 for (let fck of fckValues) {
                     for (let fy of fyValues) {
@@ -455,53 +356,70 @@
                         let sandInTon = Math.round((volumeSand * 1600 / 1000) * 100) / 100;
                         let aggregateInTon = Math.round((volumeAggregate * 1450 / 1000) * 100) / 100;
 
-                        let priceCement = Math.round((numCementBags * inputs.rateCement) * 100) / 100;
+                        let priceCement = Math.round((numCementBags * cementPrice) * 100) / 100;
                         let steelRate = fy === 415 ? inputs.rateSteel415 : (fy === 500 ? inputs.rateSteel500 : inputs.rateSteel550);
                         let priceSteel = Math.round((totalSteelWeight * steelRate) * 100) / 100;
                         let priceSand = Math.round((sandInTon * inputs.rateSand) * 100) / 100;
                         let priceAggregate = Math.round((aggregateInTon * inputs.rateAggregate) * 100) / 100;
                         let totalPrice = Math.round((priceCement + priceSteel + priceSand + priceAggregate) * 100) / 100;
 
-                        designResults.push([fck, fy, totalPrice, shearCheck]);
+                        designResults.push([fck, fy, totalPrice, shearCheck, cementPrice]);
                     }
                 }
                 if (designResults.length > 0) {
                     let minPriceIdx = designResults.reduce((minIdx, curr, idx, arr) => curr[2] < arr[minIdx][2] ? idx : minIdx, 0);
                     let minCombo = `${designResults[minPriceIdx][0]}-${designResults[minPriceIdx][1]}`;
-                    results.push([inputs.longerSpan, inputs.shorterSpan, inputs.liveLoad, minCombo, designResults[minPriceIdx][3], designResults[minPriceIdx][2]]);
+                    results.push([cementPrice, minCombo, designResults[minPriceIdx][2], designResults[minPriceIdx][3]]);
                 }
             }
 
-            let html = '<table><thead><tr><th>Longer Span (m)</th><th>Shorter Span (m)</th><th>Live Load (kN/m²)</th><th>Minimum Combination (Fck-Fy)</th><th>Shear Check</th><th>Total Price (INR)</th></tr></tbody>';
+            let html = '<table><thead><tr><th>Cement Price (INR/50kg bag)</th><th>Minimum Combination (Fck-Fy)</th><th>Total Price (INR)</th></tr></thead><tbody>';
             if (results.length === 0) {
-                html += '<tr><td colspan="6">No valid designs found.</td></tr>';
+                html += '<tr><td colspan="3">No valid designs found.</td></tr>';
             } else {
                 results.forEach(row => {
-                    html += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td class="${row[4].toLowerCase()}">${row[4]}</td><td>${row[5]}</td></tr>`;
+                    html += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td></tr>`;
                 });
             }
             html += '</tbody></table>';
             document.getElementById('table-container').innerHTML = html;
 
             if (results.length > 0) {
-                const liveLoads = results.map(r => r[2]);
-                const prices = results.map(r => r[5]);
+                const combinations = [...new Set(results.map(r => r[1]))];
+                const cementPrices = results.map(r => r[0]);
+                const dataPoints = results.map(r => ({
+                    x: r[1],
+                    y: r[0]
+                }));
+
                 const priceChartCtx = document.getElementById('priceChart').getContext('2d');
                 destroyCharts();
                 priceChart = new Chart(priceChartCtx, {
-                    type: 'line',
+                    type: 'scatter',
                     data: {
-                        labels: liveLoads,
                         datasets: [{
-                            label: 'Total Price (INR)',
-                            data: prices,
-                            borderColor: 'blue',
-                            fill: false
+                            label: 'Cement Price vs Combination',
+                            data: dataPoints,
+                            backgroundColor: 'blue',
+                            pointRadius: 5
                         }]
                     },
                     options: {
-                        scales: { x: { title: { text: 'Live Load (kN/m²)' } }, y: { title: { text: 'Total Price (INR)' } } },
-                        plugins: { title: { text: 'Price vs Live Load' } }
+                        scales: {
+                            x: {
+                                type: 'category',
+                                labels: combinations,
+                                title: { display: true, text: 'Minimum Combination (Fck-Fy)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Cement Price (INR/50kg bag)' },
+                                min: 190,
+                                max: 410
+                            }
+                        },
+                        plugins: {
+                            title: { display: true, text: 'Cement Price vs Minimum Combination' }
+                        }
                     }
                 });
             }
@@ -520,23 +438,14 @@
 
         function exportToExcel(data) {
             const ws = XLSX.utils.json_to_sheet(data.map(row => ({
-                "Longer Span (m)": row[0],
-                "Shorter Span (m)": row[1],
-                "Live Load (kN/m²)": row[2],
-                "Minimum Combination (Fck-Fy)": row[3],
-                "Shear Check": row[4],
-                "Total Price (INR)": row[5]
+                "Cement Price (INR/50kg bag)": row[0],
+                "Minimum Combination (Fck-Fy)": row[1],
+                "Total Price (INR)": row[2]
             })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "SlabDesign");
             XLSX.writeFile(wb, "Slab_Design_Results.xlsx");
         }
-
-        document.getElementById('shorterSpan').addEventListener('input', function() {
-            if (this.value >= 2.2 && this.value <= 4.8) {
-                calculateSlabDesign();
-            }
-        });
     </script>
 </body>
 </html>
